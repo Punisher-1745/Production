@@ -1,7 +1,7 @@
 Section One:
   - cd Downloads
-  - sudo apt install ./ [package name]
-  - sudo dnf install ./ [package name]
+  - sudo apt install ./[package name]
+  - sudo dnf install ./[package name]
   - sudo dpkg -i [package name]
   - sudo rpm -i [package name]
   - sudo pacman -U [package name]
