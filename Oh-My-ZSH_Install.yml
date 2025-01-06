@@ -1,0 +1,8 @@
+- Go to https://ohmyz.sh/#install
+- Paste and run the command in terminal
+- Agree to set the "zsh" as your default shell
+- To install plugins visit https://gist.github.com/n1snt/454b879b8f0b7995740ae04c5fb5b7df
+- Edit the zshrc file and paste the last command from above plugins
+- Comment the #plugins=(git) and paste as above instruction
+- Save the file and exit
+- Edit the zshrc again commenting, copying and replacing the theme with "agnoster"

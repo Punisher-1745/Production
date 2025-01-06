@@ -1,0 +1,30 @@
+Section One:
+  - cd Downloads
+  - sudo apt install ./ [package name]
+  - sudo dnf install ./ [package name]
+  - sudo dpkg -i [package name]
+  - sudo rpm -i [package name]
+  - sudo pacman -U [package name]
+ 
+Section Two:
+  - sudo apt-get purge --autoremove neovim
+  - sudo tar -xvf [filename tar.gz] -C /usr/local
+  - export PATH=/usr/node-v1455-linux-x64/bin:$PATH
+  - chmod +x [script name]
+  - sudo chown carlos:carlos Downloads/
+
+Section Three: 
+  - ./[script name] to run it
+  - rmdir [directory name] empty
+  - sudo rm -rf [directory name]
+  - sudo crontab -u root -l
+  - sudo crontab -u root -e
+
+Section Four: 
+  - cat /var/log/syslog | grep CRON
+  - yes | pacman -Syu [auto update arch-linux via cronjob]
+  - sudo -i [to become root]
+  - sudo su [become root in Arch]
+  - mv nvim-linux64 ~/.local/bin
+  - ln -s .nvim-linux64/bin/nvim ./nvim [whilst in the above directory]
+  

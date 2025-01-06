@@ -1,0 +1,15 @@
+Custom Network Creation
+- sudo docker network create -d ipvlan \
+- subnet 192.168.0.0/24 \
+- gateway 192.168.0.1 \
+- o ipvlan_mode=l2 \
+- parent=empls0 my-ipvlan-net
+
+Container Deletion
+- sudo docker ps -a
+- sudo docker builder prune
+- sudo docker container prune
+- sudo docker image ls
+- sudo docker image prune -f
+- sudo docker volume ls
+- sudo docker system prune --volumes --all
