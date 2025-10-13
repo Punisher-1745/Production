@@ -6,8 +6,8 @@
 # Sends notifications to Gotify
 
 # Configuration
-GOTIFY_URL=http://"192.168.1.109"
-GOTIFY_TOKEN="AkTBqKmUn9D3rfq"
+GOTIFY_URL=http://"IP_Address"
+GOTIFY_TOKEN="Your_Token_Here"
 SCRIPT_NAME="System Maintenance"
 HOSTNAME=$(hostname)
 
