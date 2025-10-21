@@ -1,0 +1,104 @@
+Here's a complete step-by-step guide to create a systemd timer on Debian Linux that:
+
+Updates the system
+Autoremoves and autocleans orphaned packages
+Reboots if necessary
+Sends a Gotify notification via curl
+Runs every Wednesday at 06:10 AM
+Executes without user confirmation
+
+🛠 Step 1: Create the Shell Script
+Create a script that performs the update, cleanup, reboot check, and Gotify notification.
+
+bash
+sudo nano /usr/local/bin/system_maintenance.sh
+Paste the following content:
+
+bash
+#!/bin/bash
+
+# Update and clean
+apt update -y
+apt upgrade -y
+apt autoremove -y
+apt autoclean -y
+
+# Check if reboot is required
+if [ -f /var/run/reboot-required ]; then
+    curl -X POST "https://your-gotify-server/message?token=YOUR_TOKEN" \
+         -F "title=System Maintenance" \
+         -F "message=Reboot required. System will reboot now." \
+         -F "priority=5"
+    reboot
+else
+    curl -X POST "https://your-gotify-server/message?token=YOUR_TOKEN" \
+         -F "title=System Maintenance" \
+         -F "message=Maintenance completed. No reboot needed." \
+         -F "priority=5"
+fi
+
+Make it executable:
+
+bash
+sudo chmod +x /usr/local/bin/system_maintenance.sh
+
+Step 2: Create the systemd Service Unit
+Create a service unit to run the script.
+
+bash
+sudo nano /etc/systemd/system/system-maintenance.service
+
+Add the following:
+
+ini
+[Unit]
+Description=Weekly system maintenance
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/system_maintenance.sh
+
+Step 3: Create the systemd Timer Unit
+Create a timer unit to schedule the service.
+
+bash
+sudo nano /etc/systemd/system/system-maintenance.timer
+Add the following:
+
+ini
+[Unit]
+Description=Run system maintenance every Wednesday at 06:10
+
+[Timer]
+OnCalendar=Wed *-*-* 06:10:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+
+Step 4: Enable and Start the Timer
+Enable and start the timer so it runs weekly.
+
+bash
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl enable --now system-maintenance.timer
+
+✅ Step 5: Verify Setup
+Check status:
+
+bash
+systemctl list-timers --all
+Test manually:
+
+bash
+sudo systemctl start system-maintenance.service
+
+Notes
+Replace https://your-gotify-server and YOUR_TOKEN with your actual Gotify server URL and token.
+
+Make sure curl is installed: sudo apt install curl
+
+This setup assumes root privileges are available for system updates and reboot.
+
+Would you like help customizing the Gotify message or adding logging to the script?
