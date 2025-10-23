@@ -11,7 +11,7 @@ Executes without user confirmation
 Create a script that performs the update, cleanup, reboot check, and Gotify notification.
 
 bash
-sudo nano /usr/local/bin/system_maintenance.sh
+sudo nano /usr/local/bin/weekly_system_maintenance.sh
 Paste the following content:
 
 bash
@@ -40,13 +40,13 @@ fi
 Make it executable:
 
 bash
-sudo chmod +x /usr/local/bin/system_maintenance.sh
+sudo chmod +x /usr/local/bin/weekly_system_maintenance.sh
 
 Step 2: Create the systemd Service Unit
 Create a service unit to run the script.
 
 bash
-sudo nano /etc/systemd/system/system-maintenance.service
+sudo nano /etc/systemd/system/weekly_system-maintenance.service
 
 Add the following:
 
@@ -56,13 +56,13 @@ Description=Weekly system maintenance
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/system_maintenance.sh
+ExecStart=/usr/local/bin/weekly_system_maintenance.sh
 
 Step 3: Create the systemd Timer Unit
 Create a timer unit to schedule the service.
 
 bash
-sudo nano /etc/systemd/system/system-maintenance.timer
+sudo nano /etc/systemd/system/weekly_system-maintenance.timer
 Add the following:
 
 ini
@@ -82,7 +82,7 @@ Enable and start the timer so it runs weekly.
 bash
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
-sudo systemctl enable --now system-maintenance.timer
+sudo systemctl enable --now weekly_system-maintenance.timer
 
 ✅ Step 5: Verify Setup
 Check status:
@@ -92,7 +92,7 @@ systemctl list-timers --all
 Test manually:
 
 bash
-sudo systemctl start system-maintenance.service
+sudo systemctl start weekly_system-maintenance.service
 
 Notes
 Replace https://your-gotify-server and YOUR_TOKEN with your actual Gotify server URL and token.
