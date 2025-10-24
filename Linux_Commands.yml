@@ -9,7 +9,7 @@ Section One:
 Section Two:
   - sudo apt-get purge --autoremove neovim
   - sudo tar -xvf [filename tar.gz] -C /usr/local
-  - export PATH=/usr/node-v1455-linux-x64/bin:$PATH
+  - export PATH=$PATH:/path/to/dir1
   - chmod +x [script name]
   - sudo chown carlos:carlos Downloads/
 
