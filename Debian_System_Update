@@ -37,18 +37,18 @@ else
          -F "priority=5"
 fi
 
-Make it executable:
+# Make it executable:
 
 bash
 sudo chmod +x /usr/local/bin/weekly_system_maintenance.sh
 
-Step 2: Create the systemd Service Unit
+# Step 2: Create the systemd Service Unit
 Create a service unit to run the script.
 
 bash
 sudo nano /etc/systemd/system/weekly_system-maintenance.service
 
-Add the following:
+# Add the following:
 
 ini
 [Unit]
@@ -58,7 +58,7 @@ Description=Weekly system maintenance
 Type=oneshot
 ExecStart=/usr/local/bin/weekly_system_maintenance.sh
 
-Step 3: Create the systemd Timer Unit
+# Step 3: Create the systemd Timer Unit
 Create a timer unit to schedule the service.
 
 bash
@@ -76,7 +76,7 @@ Persistent=true
 [Install]
 WantedBy=timers.target
 
-Step 4: Enable and Start the Timer
+# Step 4: Enable and Start the Timer
 Enable and start the timer so it runs weekly.
 
 bash
