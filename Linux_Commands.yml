@@ -40,3 +40,6 @@ Add the following lines at the end:
 lxc.cgroup2.devices.allow: c 10:200 rwm
 lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file
 
+Section Six:
+kasm persistent workspace:   /mnt/kasm_profiles/{username}/{image_id}
+
