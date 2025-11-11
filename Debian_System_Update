@@ -14,7 +14,6 @@ bash
 sudo nano /usr/local/bin/weekly_system_maintenance.sh
 Paste the following content:
 
-bash
 #!/bin/bash
 
 # Update and clean
