@@ -19,6 +19,8 @@ Section Three:
   - sudo rm -rf [directory name]
   - sudo crontab -u root -l
   - sudo crontab -u root -e
+  - sudo tailscale set --auto-update
+  - sudo tailscale set --accept-routes
 
 Section Four: 
   - cat /var/log/syslog | grep CRON
