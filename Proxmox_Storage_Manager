@@ -1,0 +1,9 @@
+#Navigate to Datacentre
+Action: Select storage
+- remove storage: "local-lvm"
+
+#Navigate to Proxmox Node
+Action: Select shell
+- execute command: "lvremove /dev/pve/data"
+- execute command: "lvresize -l +100%FREE /dev/pve/root"
+- execute command: "resize2fs /dev/mapper/pve/root"
