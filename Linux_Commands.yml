@@ -44,4 +44,6 @@ lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file
 
 Section Six:
 kasm persistent workspace:   /mnt/kasm_profiles/{username}/{image_id}
+sudo flatpak install flathub com.ktechpit.ultimate-media-downloader
+sudo flatpak run com.ktechpit.ultimate-media-downloader
 
