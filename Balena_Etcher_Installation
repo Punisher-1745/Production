@@ -1,0 +1,6 @@
+Download the linux zip file
+Unzip the file
+Change to unzipped directory
+Run sudo chown root chrome-sandbox
+Run sudo chmod 4755 chrome-sandbox
+Finally run ./balena-etcher
