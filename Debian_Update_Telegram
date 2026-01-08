@@ -1,0 +1,85 @@
+Step 1: Create the Update Script
+sudo nano /usr/local/bin/system-update.sh
+
+Paste the following code:
+#!/bin/bash
+
+# Configuration
+TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+CHAT_ID="YOUR_TELEGRAM_CHAT_ID"
+HOSTNAME=$(hostname)
+
+send_telegram() {
+    local message="$1"
+    curl -s -X POST "https://api.telegram.org/bot$TOKEN/sendMessage" \
+        -d "chat_id=$CHAT_ID" \
+        -d "text=$message" > /dev/null
+}
+
+# 1. Update package lists
+if ! apt-get update; then
+    send_telegram "❌ [$HOSTNAME] Update failed during 'apt-get update'."
+    exit 1
+fi
+
+# 2. Upgrade packages
+if ! apt-get dist-upgrade -y; then
+    send_telegram "❌ [$HOSTNAME] Upgrade failed during 'apt-get dist-upgrade'."
+    exit 1
+fi
+
+# 3. Remove orphaned packages and clean cache
+apt-get autoremove --purge -y
+apt-get autoclean
+
+# 4. Check if reboot is required
+if [ -f /var/run/reboot-required ]; then
+    send_telegram "🔄 [$HOSTNAME] Update successful. Rebooting now as required."
+    sleep 5
+    /sbin/reboot
+else
+    send_telegram "✅ [$HOSTNAME] Update completed successfully. No reboot required."
+fi
+
+Make the script executable:
+sudo chmod +x /usr/local/bin/system-update.sh
+
+Step 2: Create the systemd Service Unit
+sudo nano /etc/systemd/system/system-update.service
+
+Add the following content:
+[Unit]
+Description=Automated Debian System Update
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/system-update.sh
+User=root
+
+Step 3: Create the systemd Timer Unit
+sudo nano /etc/systemd/system/system-update.timer
+
+Add the following content:
+[Unit]
+Description=Run Debian Update every Monday at 06:00
+
+[Timer]
+# Format: DayOfWeek Year-Month-Day Hour:Minute:Second
+OnCalendar=Mon *-*-* 06:00:00
+# Ensures the job runs even if the system was off at 06:00
+Persistent=true 
+Unit=debian-update.service
+
+[Install]
+WantedBy=timers.target
+
+Step 4: Enable and Test the Timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now debian-update.timer
+systemctl list-timers --all | grep debian-update
+
+To test the script immediately without waiting for Monday, you can trigger the service manually:
+sudo systemctl start debian-update.service
+
