@@ -45,7 +45,7 @@ Make the script executable:
 sudo chmod +x /usr/local/bin/system-update.sh
 
 Step 2: Create the systemd Service Unit
-sudo nano /etc/systemd/system/system-update.service
+sudo nano /etc/systemd/system/debian-update.service
 
 Add the following content:
 [Unit]
@@ -59,7 +59,7 @@ ExecStart=/usr/local/bin/system-update.sh
 User=root
 
 Step 3: Create the systemd Timer Unit
-sudo nano /etc/systemd/system/system-update.timer
+sudo nano /etc/systemd/system/debian-update.timer
 
 Add the following content:
 [Unit]
