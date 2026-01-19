@@ -1,0 +1,24 @@
+#Step One:
+-   Switch to root user on client computer
+- Run apt install ssh -y
+- Swich to .ssh directory
+- Run ssh-keygen -t rsa -b 4096 -C "Proxmox"
+- Run ssh-copy-id root@<Proxmox_IP_Address>
+- Test ssh connection by running ssh root@<Proxmox_IP_Address>
+- Run chown user:user id_rsa
+- Run chmod 600 id_rsa
+- Run cp id_rsa /home/user/.ssh/
+- Switch back to normal user
+
+#Step Two:
+- Open VS Code
+- Install "Remote - SSH" extension
+- Press F1 and select "Remote-SSH: Open Configuration File"
+- Select the config file to edit
+- Add the following configuration:
+```Host Proxmox
+    HostName <Proxmox_IP_Address>
+    User root
+    IdentityFile /home/user/.ssh/id_rsa
+``` IdentitiesOnly yes
+- Save and close the config file
