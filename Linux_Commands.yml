@@ -36,8 +36,10 @@ UR-Backup
 Edit the setting.cfg and add server address top and bottom
 
 Section Six:
-kasm persistent workspace:   /mnt/kasm_profiles/{username}/{image_id}
 sudo flatpak install flathub com.ktechpit.ultimate-media-downloader
 sudo flatpak run com.ktechpit.ultimate-media-downloader
 Add netbird peer: curl -fsSL https://pkgs.netbird.io/install.sh | sh
 sudo netbird up --setup-key 5C25AD7E-B4EF-44CD-B5C0-A9C38B4E127E
+ssh-keygen -t ed25519 -C "Homelab_Key"
+ssh-copy-id -i ~/.ssh/id_ed25519.pub root@192.168.100.100
+ssh -i /home/carlos/.ssh/id_ed25519 root@192.168.100.151
