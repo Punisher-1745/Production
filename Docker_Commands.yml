@@ -13,3 +13,6 @@ Container Deletion
 - sudo docker image prune -f
 - sudo docker volume ls
 - sudo docker system prune --volumes --all
+
+Docker Installation Script:curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
