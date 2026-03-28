@@ -11,6 +11,7 @@ Container Deletion
 - sudo docker container prune
 - sudo docker image ls
 - sudo docker image prune -f
+- sudo docker rmi [image name]
 - sudo docker volume ls
 - sudo docker system prune --volumes --all
 
