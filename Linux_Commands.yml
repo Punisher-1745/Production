@@ -5,6 +5,7 @@ Section One:
   - sudo dpkg -i [package name]
   - sudo rpm -i [package name]
   - sudo pacman -U [package name]
+  - cd iventoy-directory && sudo bash iventoy.sh -R start
  
 Section Two:
   - sudo apt-get purge --autoremove neovim
