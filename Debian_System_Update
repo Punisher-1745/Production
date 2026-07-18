@@ -1,103 +1,186 @@
-Here's a complete step-by-step guide to create a systemd timer on Debian Linux that:
-
-Updates the system
-Autoremoves and autocleans orphaned packages
-Reboots if necessary
-Sends a Gotify notification via curl
-Runs every Wednesday at 06:10 AM
-Executes without user confirmation
-
-🛠 Step 1: Create the Shell Script
-Create a script that performs the update, cleanup, reboot check, and Gotify notification.
-
-bash
-sudo nano /usr/local/bin/weekly_system_maintenance.sh
-Paste the following content:
-
 #!/bin/bash
 
-# Update and clean
-apt update -y
-apt upgrade -y
-apt autoremove -y
-apt autoclean -y
+# System Update Script for MX-Linux 25
+# Runs updates, upgrades, cleans orphaned packages, checks reboot requirement
+# Sends notifications to Telegram bot
 
-# Check if reboot is required
-if [ -f /var/run/reboot-required ]; then
-    curl -X POST "https://your-gotify-server/message?token=YOUR_TOKEN" \
-         -F "title=System Maintenance" \
-         -F "message=Reboot required. System will reboot now." \
-         -F "priority=5"
-    reboot
-else
-    curl -X POST "https://your-gotify-server/message?token=YOUR_TOKEN" \
-         -F "title=System Maintenance" \
-         -F "message=Maintenance completed. No reboot needed." \
-         -F "priority=5"
-fi
+set -euo pipefail
 
-# Make it executable:
+# Configuration
+TELEGRAM_BOT_TOKEN="YOUR TELEGRAM TOKEN HERE"
+TELEGRAM_CHAT_ID="YOUR TELEGRAM ID HERE"
+LOG_FILE="/var/log/system-update.log"
 
-bash
-sudo chmod +x /usr/local/bin/weekly_system_maintenance.sh
+# Function to send Telegram notification
+send_telegram() {
+    local message="$1"
+    local parse_mode="${2:-}"
+    
+    if [ -n "$parse_mode" ]; then
+        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d text="${message}" \
+            -d parse_mode="${parse_mode}" > /dev/null 2>&1
+    else
+        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d text="${message}" > /dev/null 2>&1
+    fi
+}
 
-# Step 2: Create the systemd Service Unit
-Create a service unit to run the script.
+# Function to log messages
+log_message() {
+    local message="$1"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - ${message}" >> "$LOG_FILE"
+}
 
-bash
-sudo nano /etc/systemd/system/weekly_system-maintenance.service
+# Main execution
+main() {
+    local start_time=$(date '+%Y-%m-%d %H:%M:%S')
+    local errors=()
+    local success_messages=()
+    
+    log_message "Starting system update script"
+    
+    # Check if running as root
+    if [ "$EUID" -ne 0 ]; then
+        send_telegram "❌ ERROR: System update script must be run as root"
+        log_message "ERROR: Script must be run as root"
+        exit 1
+    fi
+    
+    # Update package lists with retry logic
+    log_message "Updating package lists..."
+    local update_success=false
+    for attempt in 1 2 3; do
+        log_message "Package update attempt ${attempt} of 3..."
+        if apt-get update -y >> "$LOG_FILE" 2>&1; then
+            update_success=true
+            break
+        else
+            log_message "Attempt ${attempt} failed, waiting 30 seconds before retry..."
+            sleep 30
+        fi
+    done
+    
+    if [ "$update_success" = true ]; then
+        success_messages+=("✅ Package lists updated successfully")
+        log_message "Package lists updated successfully"
+    else
+        errors+=("❌ Failed to update package lists after 3 attempts")
+        log_message "ERROR: Failed to update package lists after 3 attempts"
+    fi
+    
+    # Upgrade packages
+    log_message "Upgrading packages..."
+    if DEBIAN_FRONTEND=noninteractive apt-get upgrade -y >> "$LOG_FILE" 2>&1; then
+        success_messages+=("✅ Packages upgraded successfully")
+        log_message "Packages upgraded successfully"
+    else
+        errors+=("❌ Failed to upgrade packages")
+        log_message "ERROR: Failed to upgrade packages"
+    fi
+    
+    # Perform dist-upgrade for system updates
+    log_message "Performing dist-upgrade..."
+    if DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y >> "$LOG_FILE" 2>&1; then
+        success_messages+=("✅ Dist-upgrade completed successfully")
+        log_message "Dist-upgrade completed successfully"
+    else
+        errors+=("❌ Failed to perform dist-upgrade")
+        log_message "ERROR: Failed to perform dist-upgrade"
+    fi
+    
+    # Autoremove unnecessary packages
+    log_message "Autoremoving unnecessary packages..."
+    if apt-get autoremove -y >> "$LOG_FILE" 2>&1; then
+        success_messages+=("✅ Unnecessary packages autoremoved")
+        log_message "Unnecessary packages autoremoved"
+    else
+        errors+=("❌ Failed to autoremove packages")
+        log_message "ERROR: Failed to autoremove packages"
+    fi
+    
+    # Clean apt cache
+    log_message "Cleaning apt cache..."
+    if apt-get clean >> "$LOG_FILE" 2>&1; then
+        success_messages+=("✅ Apt cache cleaned")
+        log_message "Apt cache cleaned"
+    else
+        errors+=("❌ Failed to clean apt cache")
+        log_message "ERROR: Failed to clean apt cache"
+    fi
+    
+    # Check and remove orphaned packages (packages no longer required)
+    log_message "Checking for orphaned packages..."
+    local orphan_count=$(apt-get autoremove --purge -y --dry-run 2>/dev/null | grep -c "^Remv" || true)
+    if [ "$orphan_count" -gt 0 ]; then
+        if apt-get autoremove --purge -y >> "$LOG_FILE" 2>&1; then
+            success_messages+=("✅ Removed ${orphan_count} orphaned package(s)")
+            log_message "Removed ${orphan_count} orphaned packages"
+        else
+            errors+=("❌ Failed to remove orphaned packages")
+            log_message "ERROR: Failed to remove orphaned packages"
+        fi
+    else
+        success_messages+=("✅ No orphaned packages found")
+        log_message "No orphaned packages found"
+    fi
+    
+    # Check if reboot is required
+    log_message "Checking if reboot is required..."
+    local reboot_required=false
+    if [ -f /var/run/reboot-required ]; then
+        reboot_required=true
+        local reboot_pkgs=""
+        if [ -f /var/run/reboot-required.pkgs ]; then
+            reboot_pkgs=$(cat /var/run/reboot-required.pkgs)
+        fi
+        success_messages+=("⚠️ REBOOT REQUIRED")
+        if [ -n "$reboot_pkgs" ]; then
+            success_messages+=("Packages requiring reboot: ${reboot_pkgs}")
+        fi
+        log_message "Reboot is required"
+    else
+        success_messages+=("✅ No reboot required")
+        log_message "No reboot required"
+    fi
+    
+    # Prepare notification message
+    local notification="🔄 *System Update Report*\n"
+    notification+="📅 ${start_time}\n"
+    notification+="🖥️ $(hostname)\n\n"
+    
+    # Add success messages
+    for msg in "${success_messages[@]}"; do
+        notification+="${msg}\n"
+    done
+    
+    # Add errors if any
+    if [ ${#errors[@]} -gt 0 ]; then
+        notification+="\n❌ *Errors encountered:*\n"
+        for err in "${errors[@]}"; do
+            notification+="${err}\n"
+        done
+    fi
+    
+    # Add reboot notice if required
+    if [ "$reboot_required" = true ]; then
+        notification+="\n⚠️ *Action required:* System reboot needed to complete updates"
+    fi
+    
+    # Send notification
+    send_telegram "$(echo -e "$notification")" "Markdown"
+    
+    # Log completion
+    if [ ${#errors[@]} -eq 0 ]; then
+        log_message "System update completed successfully"
+    else
+        log_message "System update completed with ${#errors[@]} error(s)"
+    fi
+    
+    exit 0
+}
 
-# Add the following:
-
-ini
-[Unit]
-Description=Weekly system maintenance
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/weekly_system_maintenance.sh
-
-# Step 3: Create the systemd Timer Unit
-Create a timer unit to schedule the service.
-
-bash
-sudo nano /etc/systemd/system/weekly_system-maintenance.timer
-Add the following:
-
-ini
-[Unit]
-Description=Run system maintenance every Wednesday at 06:10
-
-[Timer]
-OnCalendar=Wed *-*-* 06:10:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-
-# Step 4: Enable and Start the Timer
-Enable and start the timer so it runs weekly.
-
-bash
-sudo systemctl daemon-reexec
-sudo systemctl daemon-reload
-sudo systemctl enable --now weekly_system-maintenance.timer
-
-✅ Step 5: Verify Setup
-Check status:
-
-bash
-systemctl list-timers --all
-Test manually:
-
-bash
-sudo systemctl start weekly_system-maintenance.service
-
-Notes
-Replace https://your-gotify-server and YOUR_TOKEN with your actual Gotify server URL and token.
-
-Make sure curl is installed: sudo apt install curl
-
-This setup assumes root privileges are available for system updates and reboot.
-
-Would you like help customizing the Gotify message or adding logging to the script?
+# Run main function
+main "$@"
