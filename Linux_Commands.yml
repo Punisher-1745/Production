@@ -34,7 +34,7 @@ Section Four:
   - sudo npm update -g @google/gemini-cli
   
 Section Five:
-UR-Backup
+  UR-Backup
 - /usr/local/var/urbackup/data [take ownership of directory recursively]
 - Edit the setting.cfg and add server address top and bottom
 
