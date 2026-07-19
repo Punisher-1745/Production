@@ -1,5 +1,5 @@
 #Step One:
--   Switch to root user on client computer
+- Switch to root user on client computer
 - Run apt install ssh -y
 - Swich to .ssh directory
 - Run ssh-keygen -t rsa -b 4096 -C "Proxmox"
