@@ -1,0 +1,187 @@
+#!/bin/bash
+
+# System Update Script for Fedora Linux
+# Runs updates, upgrades, cleans orphaned packages, checks reboot requirement
+# Sends notifications to Telegram bot
+
+set -euo pipefail
+
+# Configuration
+TELEGRAM_BOT_TOKEN="YOUR TELEGRAM TOKEN HERE"
+TELEGRAM_CHAT_ID="YOUR TELEGRAM ID HERE"
+LOG_FILE="/var/log/system-update.log"
+
+# Function to send Telegram notification
+send_telegram() {
+    local message="$1"
+    local parse_mode="${2:-}"
+
+    if [ -n "$parse_mode" ]; then
+        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d text="${message}" \
+            -d parse_mode="${parse_mode}" > /dev/null 2>&1
+    else
+        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d text="${message}" > /dev/null 2>&1
+    fi
+}
+
+# Function to log messages
+log_message() {
+    local message="$1"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - ${message}" >> "$LOG_FILE"
+}
+
+# Main execution
+main() {
+    local start_time=$(date '+%Y-%m-%d %H:%M:%S')
+    local errors=()
+    local success_messages=()
+
+    log_message "Starting system update script"
+
+    # Check if running as root
+    if [ "$EUID" -ne 0 ]; then
+        send_telegram "❌ ERROR: System update script must be run as root"
+        log_message "ERROR: Script must be run as root"
+        exit 1
+    fi
+
+    # Refresh package metadata with retry logic
+    log_message "Refreshing package metadata..."
+    local update_success=false
+    for attempt in 1 2 3; do
+        log_message "Package metadata refresh attempt ${attempt} of 3..."
+        if dnf check-update -y >> "$LOG_FILE" 2>&1; then
+            update_success=true
+            break
+        else
+            # dnf check-update returns exit code 100 when updates are available — treat as success
+            local exit_code=$?
+            if [ "$exit_code" -eq 100 ]; then
+                update_success=true
+                break
+            fi
+            log_message "Attempt ${attempt} failed, waiting 30 seconds before retry..."
+            sleep 30
+        fi
+    done
+
+    if [ "$update_success" = true ]; then
+        success_messages+=("✅ Package metadata refreshed successfully")
+        log_message "Package metadata refreshed successfully"
+    else
+        errors+=("❌ Failed to refresh package metadata after 3 attempts")
+        log_message "ERROR: Failed to refresh package metadata after 3 attempts"
+    fi
+
+    # Upgrade all packages
+    log_message "Upgrading packages..."
+    if dnf upgrade -y >> "$LOG_FILE" 2>&1; then
+        success_messages+=("✅ Packages upgraded successfully")
+        log_message "Packages upgraded successfully"
+    else
+        errors+=("❌ Failed to upgrade packages")
+        log_message "ERROR: Failed to upgrade packages"
+    fi
+
+    # Autoremove unnecessary/orphaned packages
+    log_message "Removing unnecessary packages..."
+    if dnf autoremove -y >> "$LOG_FILE" 2>&1; then
+        success_messages+=("✅ Unnecessary packages removed")
+        log_message "Unnecessary packages removed"
+    else
+        errors+=("❌ Failed to autoremove packages")
+        log_message "ERROR: Failed to autoremove packages"
+    fi
+
+    # Clean dnf cache
+    log_message "Cleaning dnf cache..."
+    if dnf clean all >> "$LOG_FILE" 2>&1; then
+        success_messages+=("✅ DNF cache cleaned")
+        log_message "DNF cache cleaned"
+    else
+        errors+=("❌ Failed to clean DNF cache")
+        log_message "ERROR: Failed to clean DNF cache"
+    fi
+
+    # Check and remove orphaned packages not caught by autoremove
+    log_message "Checking for remaining orphaned packages..."
+    local orphan_count
+    orphan_count=$(dnf list extras --quiet 2>/dev/null | grep -c "^" || true)
+    if [ "$orphan_count" -gt 0 ]; then
+        success_messages+=("ℹ️ ${orphan_count} extra/orphaned package(s) detected (manual review recommended)")
+        log_message "${orphan_count} extra/orphaned package(s) detected"
+    else
+        success_messages+=("✅ No orphaned packages found")
+        log_message "No orphaned packages found"
+    fi
+
+    # Check if reboot is required (uses needs-restarting from dnf-utils)
+    log_message "Checking if reboot is required..."
+    local reboot_required=false
+    if command -v needs-restarting &> /dev/null; then
+        if ! needs-restarting -r >> "$LOG_FILE" 2>&1; then
+            reboot_required=true
+            success_messages+=("⚠️ REBOOT REQUIRED")
+            log_message "Reboot is required"
+        else
+            success_messages+=("✅ No reboot required")
+            log_message "No reboot required"
+        fi
+    else
+        # Fallback: check if a newer kernel was installed
+        local running_kernel
+        local latest_kernel
+        running_kernel=$(uname -r)
+        latest_kernel=$(rpm -q --last kernel | head -1 | awk '{print $1}' | sed 's/kernel-//')
+        if [ "$running_kernel" != "$latest_kernel" ]; then
+            reboot_required=true
+            success_messages+=("⚠️ REBOOT REQUIRED (kernel updated: ${latest_kernel})")
+            log_message "Reboot required — kernel updated to ${latest_kernel}"
+        else
+            success_messages+=("✅ No reboot required")
+            log_message "No reboot required"
+        fi
+    fi
+
+    # Prepare notification message
+    local notification="🔄 *System Update Report*\n"
+    notification+="📅 ${start_time}\n"
+    notification+="🖥️ $(hostname)\n\n"
+
+    # Add success messages
+    for msg in "${success_messages[@]}"; do
+        notification+="${msg}\n"
+    done
+
+    # Add errors if any
+    if [ ${#errors[@]} -gt 0 ]; then
+        notification+="\n❌ *Errors encountered:*\n"
+        for err in "${errors[@]}"; do
+            notification+="${err}\n"
+        done
+    fi
+
+    # Add reboot notice if required
+    if [ "$reboot_required" = true ]; then
+        notification+="\n⚠️ *Action required:* System reboot needed to complete updates"
+    fi
+
+    # Send notification
+    send_telegram "$(echo -e "$notification")" "Markdown"
+
+    # Log completion
+    if [ ${#errors[@]} -eq 0 ]; then
+        log_message "System update completed successfully"
+    else
+        log_message "System update completed with ${#errors[@]} error(s)"
+    fi
+
+    exit 0
+}
+
+# Run main function
+main "$@"
